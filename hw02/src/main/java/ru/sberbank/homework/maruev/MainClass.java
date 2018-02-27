@@ -7,7 +7,7 @@ import java.util.Scanner;
  */
 public class MainClass {
     public static void main(String[] args) {
-        HardCalculator calculator = new HardCalculator();
+        CalculatorImpl calculator = new CalculatorImpl();
         Scanner scanner = new Scanner(System.in);
         System.out.println("Введите выражение, или quit для выхода");
         String input = scanner.nextLine();

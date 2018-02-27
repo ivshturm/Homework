@@ -5,19 +5,19 @@ package ru.sberbank.homework.maruev;
  * Используется в классе HardCalculator
  */
 public enum Operation {
-    SUM('+'),
-    SUBSTRACT('-'),
-    MULTIPLY('*'),
-    DIVISION('/');
+    SUM("+"),
+    SUBSTRACT("-"),
+    MULTIPLY("*"),
+    DIVISION("/");
 
-    private final char OPERATOR;
+    private final String OPERATOR;
 
-    Operation(char OPERATOR) {
+    Operation(String OPERATOR) {
         this.OPERATOR = OPERATOR;
 
     }
 
-    public char getOperation() {
+    public String getOperation() {
         return OPERATOR;
     }
 }
