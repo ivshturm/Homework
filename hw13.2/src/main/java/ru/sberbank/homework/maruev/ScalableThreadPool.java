@@ -6,7 +6,6 @@ import java.util.ArrayDeque;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by Ivan.
@@ -14,57 +13,57 @@ import java.util.concurrent.TimeUnit;
 public class ScalableThreadPool implements ThreadPool {
     private int max;
     private int min;
+    public boolean isRunning = true;
     public List<Thread> threads;
-    public Queue<Runnable> queue;
-    private Controller controller;
-
+    public Queue<Runnable> taskQueue;
 
     public ScalableThreadPool(int min, int max) {
         this.max = max;
         this.min = min;
-        queue = new ArrayDeque<>();
+        taskQueue = new ArrayDeque<>();
         threads = new LinkedList<>();
 
         for (int i = 0; i < min; i++) {
             threads.add(new PoolHelper());
         }
-
-        controller = new Controller();
     }
 
     @Override
     public void start() {
         threads.forEach(e -> e.start());
-        controller.start();
     }
 
     @Override
     public void execute(Runnable runnable) {
-        synchronized (queue) {
-            queue.add(runnable);
-            queue.notifyAll();
+        synchronized (taskQueue) {
+            addNewTask(runnable);
+            taskQueue.notifyAll();
         }
     }
 
-    private class Controller extends Thread {
+    public boolean isEmpty(Queue<Runnable> queue) {
+        boolean result = queue.isEmpty();
 
-        @Override
-        public void run() {
-            while (true) {
-                synchronized (queue) {
-                    if (queue.size() > min && threads.size() != max) {
-                            Thread thread = new PoolHelper();
-                            threads.add(thread);
-                            thread.start();
-
-                    } else if (queue.size() == 0 && threads.size() > min) {
-                            Thread thread = threads.get(threads.size()-1);
-                            threads.remove(thread);
-                            thread.interrupt();
-                    }
-                }
-            }
+        if (result && threads.size() > min) {
+            Thread thread = threads.get(threads.size() - 1);
+            threads.remove(thread);
+            thread.interrupt();
         }
+        return result;
+    }
+
+    public void addNewTask(Runnable newTask) {
+        taskQueue.add(newTask);
+
+        if(taskQueue.size() > 0 && threads.size() < max) {
+            Thread thread = new PoolHelper();
+            threads.add(thread);
+            thread.start();
+        }
+    }
+
+    public void shoutdown() {
+        isRunning = false;
     }
 
 
@@ -73,23 +72,21 @@ public class ScalableThreadPool implements ThreadPool {
         public void run() {
             Runnable runnable;
 
-            while (true) {
-                synchronized (queue) {
-                    while (queue.isEmpty()) {
+            while (isRunning) {
+                synchronized (taskQueue) {
+                    while (isEmpty(taskQueue)) {
                         try {
-                            queue.wait();
+                            taskQueue.wait();
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                         }
                     }
-                    runnable = queue.poll();
+                    runnable = taskQueue.poll();
                 }
 
                 try {
                     runnable.run();
-                    System.out.println(threads.size());
-                    TimeUnit.MILLISECONDS.sleep(50);
-                } catch (RuntimeException | InterruptedException e) {
+                } catch (RuntimeException e) {
                     Thread.currentThread().interrupt();
                 }
             }
